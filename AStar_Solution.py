@@ -77,9 +77,9 @@ def create_puzzle():
     # maze_name = input("Enter puzzle name(Example - puzzle.txt): ")
     #For Hardcoded puzzle use
     # maze_name = "puzzle1.txt"
-    maze_name = "puzzle2.txt"
+    # maze_name = "puzzle2.txt"
     # maze_name = "puzzle3.txt"
-    # maze_name = "puzzle4BFS.txt"
+    maze_name = "puzzle4BFS.txt"
 
     file = open(maze_name, "r")
     lines = file.readlines()
@@ -172,13 +172,11 @@ def successor_func(currentNode):
 
 def populate_path(node):
     path = []
-    pathCost = 0
     currentNode = node.copy()
     while currentNode != None:
         path.insert(0, currentNode.movement)
-        pathCost += currentNode.pastCost
         currentNode = currentNode.parent
-    return path, pathCost
+    return path
 
 def append_to_fringe(fringe, currentNode):
     for node in currentNode.neighbors:
@@ -213,8 +211,6 @@ def a_star_solution(puzzle):
     closed = []
     currentNode = None
     head = Node(puzzle, start, None, None)
-    #Past cost of starting position is 0
-    head.pastCost = 0 # TODO - Remove Line
     #Future cost of starting position determined by manhattan heuristics
     head.futureCost = manhattan_heuristics(head)
     fringe = [head]
@@ -234,11 +230,11 @@ def a_star_solution(puzzle):
             currentNode = successor_func(currentNode)
             fringe = append_to_fringe(fringe, currentNode)
         elif goalFound:
-            path, pathCost = populate_path(currentNode)
+            path = populate_path(currentNode)
         print(iteration)
     print(path)
-    print("Past Cost:",pathCost)
-    return path, pathCost
+    print("Past Cost:",currentNode.pastCost)
+    return path, currentNode.pastCost
 
 def solution_host():
     global SELECTION
