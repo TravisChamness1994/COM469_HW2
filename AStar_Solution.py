@@ -185,6 +185,7 @@ def successor_func(currentNode):
             newNode.futureCost = misplaced_tile_heuristics(newNode)
         currentNode.neighbors.append(newNode)
     #Right
+    copyState = [row[:] for row in currentNode.state]
     if copyLocation[COL] != MAX_DIMENSION:
         temp = copyState[copyLocation[ROW]][copyLocation[COL]+1]
         copyState[copyLocation[ROW]][copyLocation[COL]+1] = copyState[copyLocation[ROW]][copyLocation[COL]]
