@@ -15,6 +15,7 @@ MAX_DIMENSION = 2
 LOOKUP_TABLE = [[0,0], [0,1], [0,2], [1,0], [1,1], [1,2], [2,0], [2,1], [2,2]]
 #Global value used to identify which algorithm is being used
 SELECTION = 0
+ULDR = [[-1,0],[0, -1],[1, 0],[0, 1]]
 
 #Taken from Lab 3
 class Node:
@@ -45,6 +46,9 @@ class Node:
 
     def copy(self):
         newNode = Node(self.state, self.location, self.parent, self.movement)
+        newNode.pastCost = self.pastCost
+        newNode.futureCost = self.futureCost
+        newNode.movement = self.movement
         return newNode
     # Compares two nodes for whether or not they are the same
     #   Does not consider the movement, because a movement may not have happened yet, and certainly should not happen again.'
@@ -128,89 +132,53 @@ def misplaced_tile_heuristics(node):
                 cumTiles += 1
     return cumTiles
 
+def successor_helper(currentNode, copyLocation, copyState, move, direction):
+    temp = copyState[copyLocation[ROW] + move[ROW]][copyLocation[COL] + move[COL]]
+    copyState[copyLocation[ROW] + move[ROW]][copyLocation[COL] + move[COL]] = copyState[copyLocation[ROW]][copyLocation[COL]]
+    copyState[copyLocation[ROW]][copyLocation[COL]] = temp
+    copyLocation[ROW] = copyLocation[ROW] + move[ROW]
+    copyLocation[COL] = copyLocation[COL] + move[COL]
+    newNode = Node(copyState, copyLocation, currentNode, direction)
+    # Assign the new nodes past cost by incrementing the current node's cost by 1
+    newNode.pastCost = currentNode.pastCost + 1
+    # Assign the new nodes future cost by heuristic
+    if SELECTION == 1:
+        newNode.futureCost = manhattan_heuristics(newNode)
+    else:
+        newNode.futureCost = misplaced_tile_heuristics(newNode)
+    currentNode.neighbors.append(newNode)
+    return currentNode
+
 def successor_func(currentNode):
     global SELECTION
+    global ULDR
 
-    #UP
-    copyLocation = currentNode.location.copy()
-    copyState = [row[:] for row in currentNode.state]
-    if copyLocation[ROW] != MIN_DIMENSION:
-        temp = copyState[copyLocation[ROW] - 1][copyLocation[COL]]
-        copyState[copyLocation[ROW]-1][copyLocation[COL]] = copyState[copyLocation[ROW]][copyLocation[COL]]
-        copyState[copyLocation[ROW]][copyLocation[COL]] = temp
-        copyLocation[ROW] = copyLocation[ROW] - 1
-        newNode = Node(copyState, copyLocation, currentNode, 'U')
-        # Assign the new nodes past cost by incrementing the current node's cost by 1
-        newNode.pastCost = currentNode.pastCost + 1
-        # Assign the new nodes future cost by heuristic
-        if SELECTION == 1:
-            newNode.futureCost = manhattan_heuristics(newNode)
-        else:
-            newNode.futureCost = misplaced_tile_heuristics(newNode)
-        currentNode.neighbors.append(newNode)
-    #Left
-    copyLocation = currentNode.location.copy()
-    copyState = [row[:] for row in currentNode.state]
-    if copyLocation[COL] != MIN_DIMENSION:
-        temp = copyState[copyLocation[ROW]][copyLocation[COL] - 1]
-        copyState[copyLocation[ROW]][copyLocation[COL] - 1] = copyState[copyLocation[ROW]][copyLocation[COL]]
-        copyState[copyLocation[ROW]][copyLocation[COL]] = temp
-        copyLocation[COL]= copyLocation[COL] - 1
-        newNode = Node(copyState, copyLocation, currentNode, 'L')
-        # Assign the new nodes past cost by incrementing the current node's cost by 1
-        newNode.pastCost = currentNode.pastCost + 1
-        # Assign the new nodes future cost by heuristic
-        # newNode.futureCost = manhattan_heuristics(newNode)
-        if SELECTION == 1:
-            newNode.futureCost = manhattan_heuristics(newNode)
-        else:
-            newNode.futureCost = misplaced_tile_heuristics(newNode)
-        currentNode.neighbors.append(newNode)
-    #Down
-    copyLocation = currentNode.location.copy()
-    copyState = [row[:] for row in currentNode.state]
-    if copyLocation[ROW] != MAX_DIMENSION:
-        temp = copyState[copyLocation[ROW] + 1][copyLocation[COL]]
-        copyState[copyLocation[ROW]+1][copyLocation[COL]] = copyState[copyLocation[ROW]][copyLocation[COL]]
-        copyState[copyLocation[ROW]][copyLocation[COL]] = temp
-        copyLocation[ROW] += 1
-        newNode = Node(copyState, copyLocation, currentNode, 'D')
-        # Assign the new nodes past cost by incrementing the current node's cost by 1
-        newNode.pastCost = currentNode.pastCost + 1
-        # Assign the new nodes future cost by heuristic
-        # newNode.futureCost = manhattan_heuristics(newNode)
-        if SELECTION == 1:
-            newNode.futureCost = manhattan_heuristics(newNode)
-        else:
-            newNode.futureCost = misplaced_tile_heuristics(newNode)
-        currentNode.neighbors.append(newNode)
-    #Right
-    copyState = [row[:] for row in currentNode.state]
-    if copyLocation[COL] != MAX_DIMENSION:
-        temp = copyState[copyLocation[ROW]][copyLocation[COL]+1]
-        copyState[copyLocation[ROW]][copyLocation[COL]+1] = copyState[copyLocation[ROW]][copyLocation[COL]]
-        copyState[copyLocation[ROW]][copyLocation[COL]] = temp
-        copyLocation[COL] += 1
-        newNode = Node(copyState, copyLocation, currentNode, 'R')
-        # Assign the new nodes past cost by incrementing the current node's cost by 1
-        newNode.pastCost = currentNode.pastCost + 1
-        # Assign the new nodes future cost by heuristic
-        # newNode.futureCost = manhattan_heuristics(newNode)
-        if SELECTION == 1:
-            newNode.futureCost = manhattan_heuristics(newNode)
-        else:
-            newNode.futureCost = misplaced_tile_heuristics(newNode)
-        currentNode.neighbors.append(newNode)
-
+    for direction, move in enumerate(ULDR):
+        copyLocation = currentNode.location.copy()
+        copyState = [row[:] for row in currentNode.state]
+        if direction == 0:
+            if copyLocation[ROW] != MIN_DIMENSION:
+                currentNode = successor_helper(currentNode, copyLocation, copyState, move, 'U')
+        if direction == 1:
+            if copyLocation[COL] != MIN_DIMENSION:
+                currentNode = successor_helper(currentNode, copyLocation, copyState, move, 'L')
+        if direction == 2:
+            if copyLocation[ROW] != MAX_DIMENSION:
+                currentNode = successor_helper(currentNode, copyLocation, copyState, move, 'D')
+        if direction == 3:
+            if copyLocation[COL] != MAX_DIMENSION:
+                currentNode = successor_helper(currentNode, copyLocation, copyState, move, 'R')
     return currentNode
 
 def populate_path(node):
     path = []
+    pathCost = 0
     currentNode = node.copy()
     while currentNode != None:
         path.insert(0, currentNode.movement)
+        pathCost += currentNode.pastCost
         currentNode = currentNode.parent
-    return path
+    return path, pathCost
 
 def append_to_fringe(fringe, currentNode):
     for node in currentNode.neighbors:
@@ -246,7 +214,7 @@ def a_star_solution(puzzle):
     currentNode = None
     head = Node(puzzle, start, None, None)
     #Past cost of starting position is 0
-    head.pastCost = 0
+    head.pastCost = 0 # TODO - Remove Line
     #Future cost of starting position determined by manhattan heuristics
     head.futureCost = manhattan_heuristics(head)
     fringe = [head]
@@ -266,10 +234,11 @@ def a_star_solution(puzzle):
             currentNode = successor_func(currentNode)
             fringe = append_to_fringe(fringe, currentNode)
         elif goalFound:
-            path = populate_path(currentNode)
+            path, pathCost = populate_path(currentNode)
         print(iteration)
     print(path)
-    return path, len(path) - 1
+    print("Past Cost:",pathCost)
+    return path, pathCost
 
 def solution_host():
     global SELECTION
