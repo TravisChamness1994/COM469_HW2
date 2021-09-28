@@ -19,9 +19,9 @@ ULDR = [[-1,0],[0, -1],[1, 0],[0, 1]]
 
 #Taken from Lab 3
 class Node:
-    def __init__(self, state, start, parent, movement):
+    def __init__(self, state, location, parent, movement):
         self.parent = parent
-        self.location = start
+        self.location = location
         self.pastCost = 0 #g(n) in AStar strategy
         self.futureCost = 0 #h(n) in AStar strategy
         self.neighbors = [] # Neighbors from this current state of the graph
@@ -78,8 +78,8 @@ def create_puzzle():
     #For Hardcoded puzzle use
     # maze_name = "puzzle1.txt"
     # maze_name = "puzzle2.txt"
-    # maze_name = "puzzle3.txt"
-    maze_name = "puzzle4BFS.txt"
+    maze_name = "puzzle3.txt"
+    # maze_name = "puzzle4BFS.txt"
 
     file = open(maze_name, "r")
     lines = file.readlines()
@@ -115,36 +115,49 @@ def print_puzzle_id_start(puzzle, find_start = False):
 def manhattan_heuristics(node):
     global GOAL
     global LOOKUP_TABLE
+    #Cumulative distance variable
     cumDist = 0
+    #For every row of the GOAL Matrix
     for i,row in enumerate(GOAL):
+        #For every value in the row
         for j,val in enumerate(row):
+            #If the state tile does not match the goal state tile
             if val != node.state[i][j]:
+                #Add to the cumulative distance the manhattan distance from the current position of the tile to where it should be.
                 cumDist += abs(LOOKUP_TABLE[node.state[i][j]][ROW] - i) + abs(LOOKUP_TABLE[node.state[i][j]][COL] - j)
     return cumDist
 
 def misplaced_tile_heuristics(node):
     global GOAL
     global LOOKUP_TABLE
+    #Cumulative misplaced tile variable
     cumTiles = 0
+    #For every row of the GOAL Matrix
     for i,row in enumerate(GOAL):
+        #For every value in the row
         for j,val in enumerate(row):
+            #If the state tile does not match the goal state tile
             if val != node.state[i][j]:
+                #Increment the total misplaced tile count by 1
                 cumTiles += 1
     return cumTiles
 
 def successor_helper(currentNode, copyLocation, copyState, move, direction):
+    #Swap spaces for state of new node
     temp = copyState[copyLocation[ROW] + move[ROW]][copyLocation[COL] + move[COL]]
     copyState[copyLocation[ROW] + move[ROW]][copyLocation[COL] + move[COL]] = copyState[copyLocation[ROW]][copyLocation[COL]]
     copyState[copyLocation[ROW]][copyLocation[COL]] = temp
+    #Populate the new location
     copyLocation[ROW] = copyLocation[ROW] + move[ROW]
     copyLocation[COL] = copyLocation[COL] + move[COL]
+    #Initialize new node
     newNode = Node(copyState, copyLocation, currentNode, direction)
     # Assign the new nodes past cost by incrementing the current node's cost by 1
     newNode.pastCost = currentNode.pastCost + 1
     # Assign the new nodes future cost by heuristic
-    if SELECTION == 1:
+    if SELECTION == 1: #Manhattan
         newNode.futureCost = manhattan_heuristics(newNode)
-    else:
+    else: #Misplaced tile
         newNode.futureCost = misplaced_tile_heuristics(newNode)
     currentNode.neighbors.append(newNode)
     return currentNode
@@ -156,16 +169,17 @@ def successor_func(currentNode):
     for direction, move in enumerate(ULDR):
         copyLocation = currentNode.location.copy()
         copyState = [row[:] for row in currentNode.state]
+        #Keeping the if statements separated. Prevent stepping into excessive if statements in the case that the copyLocation is out of bounds.
         if direction == 0:
             if copyLocation[ROW] != MIN_DIMENSION:
                 currentNode = successor_helper(currentNode, copyLocation, copyState, move, 'U')
-        if direction == 1:
+        elif direction == 1:
             if copyLocation[COL] != MIN_DIMENSION:
                 currentNode = successor_helper(currentNode, copyLocation, copyState, move, 'L')
-        if direction == 2:
+        elif direction == 2:
             if copyLocation[ROW] != MAX_DIMENSION:
                 currentNode = successor_helper(currentNode, copyLocation, copyState, move, 'D')
-        if direction == 3:
+        elif direction == 3:
             if copyLocation[COL] != MAX_DIMENSION:
                 currentNode = successor_helper(currentNode, copyLocation, copyState, move, 'R')
     return currentNode
@@ -204,6 +218,8 @@ def lowest_cost_node(currentNode, fringe):
 
 def a_star_solution(puzzle):
     global SELECTION
+
+    #Initial Structures
     find_start = True
     goalFound = False
     start = print_puzzle_id_start(puzzle, find_start)
@@ -211,14 +227,17 @@ def a_star_solution(puzzle):
     closed = []
     currentNode = None
     head = Node(puzzle, start, None, None)
+
     #Future cost of starting position determined by manhattan heuristics
-    head.futureCost = manhattan_heuristics(head)
+    if SELECTION == 1:
+        head.futureCost = manhattan_heuristics(head)
+    else:
+        head.futureCost = misplaced_tile_heuristics(head)
+
+    #Process puzzle via A Star
     fringe = [head]
-    iteration = 0
     while not goalFound and fringe:
-        iteration += 1
         in_closed = False
-        #TODO Replace with lowest 'cost' finding function
         currentNode = lowest_cost_node(currentNode, fringe)
         #Test the current node state against the goal state
         goalFound = currentNode.goal_test()
@@ -231,13 +250,13 @@ def a_star_solution(puzzle):
             fringe = append_to_fringe(fringe, currentNode)
         elif goalFound:
             path = populate_path(currentNode)
-        print(iteration)
-    print(path)
-    print("Past Cost:",currentNode.pastCost)
+    
     return path, currentNode.pastCost
 
+#Solution host provides the user with oportunity to use manhattan or misplaced tile heuristics
 def solution_host():
     global SELECTION
+
     validSelection = False
     while not validSelection:
         SELECTION = int(input("Heuristics Menu: \n1 - Manhattan Distance \n2 - Misplaced Tiles \n(Enter 1 or 2 for your selection) \nYour Choice?: "))
@@ -245,12 +264,16 @@ def solution_host():
         if SELECTION == 1:
             validSelection = True
             print("Manhattan Selected")
-            a_star_solution(create_puzzle())
+            path, cost = a_star_solution(create_puzzle())
         elif SELECTION == 2:
             validSelection = True
             print("Misplaced Tiles Selected")
-            a_star_solution(create_puzzle())
+            path, cost = a_star_solution(create_puzzle())
+            
         else:
             print("Invalid Selection\n")
+    #Output results from the search
+    print("Path: {} \nCost: {}".format(path, cost))
+
 
 solution_host()
